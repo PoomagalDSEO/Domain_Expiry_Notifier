@@ -2,7 +2,7 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 from configparser import ConfigParser
-# import whois
+import whois
 from datetime import datetime
 import pandas as pd
 import requests
@@ -37,7 +37,7 @@ info_dict = {
 # Google Sheets API credentials
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 # creds = ServiceAccountCredentials.from_json_keyfile_name(info_dict, scope)
-creds = Credentials.from_service_account_info(info_dict, scopes=scope)
+creds = service_account.Credentials.from_service_account_info(info_dict, scopes=scope)
 client = gspread.authorize(creds)
 sheet = client.open('Domain_Expiry_Master').worksheet('Active_Domains')
 name_server_sheet = client.open('Domain_Expiry_Master').worksheet('name_servers')
