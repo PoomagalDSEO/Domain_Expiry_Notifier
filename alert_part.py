@@ -14,7 +14,29 @@ import requests
 import json
 from configparser import ConfigParser
 import time
+db_type = st.secrets["db_credentials"]["type"]
+db_project_id = st.secrets["db_credentials"]["project_id"]
+db_private_key_id = st.secrets["db_credentials"]["private_key_id"]
+db_private_key = st.secrets["db_credentials"]["private_key"].replace("\\n", "\n")
+db_client_email = st.secrets["db_credentials"]["client_email"]
+db_client_id = st.secrets["db_credentials"]["client_id"]
+db_auth_uri = st.secrets["db_credentials"]["auth_uri"]
+db_token_uri = st.secrets["db_credentials"]["token_uri"]
+db_auth_provider_x509_cert_url = st.secrets["db_credentials"]["auth_provider_x509_cert_url"]
+db_client_x509_cert_url = st.secrets["db_credentials"]["client_x509_cert_url"]
 
+info_dict = {
+    "type": db_type,
+    "project_id": db_project_id,
+    "private_key_id": db_private_key_id,
+    "private_key": db_private_key,
+    "client_email": db_client_email,
+    "client_id": db_client_id,
+    "auth_uri": db_auth_uri,
+    "token_uri": db_token_uri,
+    "auth_provider_x509_cert_url": db_auth_provider_x509_cert_url,
+    "client_x509_cert_url": db_client_x509_cert_url,
+}
 
 def handle_google_sheets_exceptions(func):
     def wrapper(*args, **kwargs):
@@ -37,7 +59,7 @@ def handle_google_sheets_exceptions(func):
 @handle_google_sheets_exceptions
 def access_google_sheets():
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name(info_dict, scope)
     client = gspread.authorize(creds)
     sheet = client.open('Domain_Expiry_Master').worksheet('Active_Domains')
     return sheet
