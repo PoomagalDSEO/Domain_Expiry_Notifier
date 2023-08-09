@@ -1,6 +1,6 @@
 import streamlit as st
 import gspread
-from google.auth import Credentials
+from google.oauth2.service_account import Credentials
 from configparser import ConfigParser
 import whois
 from datetime import datetime
