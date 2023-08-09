@@ -1,3 +1,4 @@
+import streamlit as st
 import dns.resolver
 import os
 from gspread.exceptions import APIError, SpreadsheetNotFound, WorksheetNotFound
