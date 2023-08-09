@@ -169,7 +169,7 @@ def check_domain_expiry(sheet, domain_name):
 @handle_google_sheets_exceptions
 def update_index_sheet(last_run, domain, remaining_days, status):
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name(info_dict, scope)
     client = gspread.authorize(creds)
     sheet = client.open('Domain_Expiry_Master').worksheet('index')
     index_values = sheet.get_all_values()
