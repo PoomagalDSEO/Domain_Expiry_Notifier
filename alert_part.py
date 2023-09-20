@@ -1,4 +1,3 @@
-import streamlit as st
 import dns.resolver
 import os
 from gspread.exceptions import APIError, SpreadsheetNotFound, WorksheetNotFound
@@ -6,7 +5,6 @@ import validators
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import whois
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -15,30 +13,9 @@ import requests
 import json
 from configparser import ConfigParser
 import time
-db_type = st.secrets["db_credentials"]["type"]
-db_project_id = st.secrets["db_credentials"]["project_id"]
-db_private_key_id = st.secrets["db_credentials"]["private_key_id"]
-db_private_key = st.secrets["db_credentials"]["private_key"].replace("\\n", "\n")
-db_client_email = st.secrets["db_credentials"]["client_email"]
-db_client_id = st.secrets["db_credentials"]["client_id"]
-db_auth_uri = st.secrets["db_credentials"]["auth_uri"]
-db_token_uri = st.secrets["db_credentials"]["token_uri"]
-db_auth_provider_x509_cert_url = st.secrets["db_credentials"]["auth_provider_x509_cert_url"]
-db_client_x509_cert_url = st.secrets["db_credentials"]["client_x509_cert_url"]
+import logging
 
-info_dict = {
-    "type": db_type,
-    "project_id": db_project_id,
-    "private_key_id": db_private_key_id,
-    "private_key": db_private_key,
-    "client_email": db_client_email,
-    "client_id": db_client_id,
-    "auth_uri": db_auth_uri,
-    "token_uri": db_token_uri,
-    "auth_provider_x509_cert_url": db_auth_provider_x509_cert_url,
-    "client_x509_cert_url": db_client_x509_cert_url,
-}
-
+logging.basicConfig(filename='domainexpirylogger.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 def handle_google_sheets_exceptions(func):
     def wrapper(*args, **kwargs):
         try:
@@ -60,7 +37,7 @@ def handle_google_sheets_exceptions(func):
 @handle_google_sheets_exceptions
 def access_google_sheets():
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name(info_dict, scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
     client = gspread.authorize(creds)
     sheet = client.open('Domain_Expiry_Master').worksheet('Active_Domains')
     return sheet
@@ -138,6 +115,7 @@ def check_api(domain):
         # expiry_date = datetime.datetime.strptime(expiry_date_str, "%Y-%m-%d %H:%M:%S")
         # print(expiry_date)
         current_date = datetime.datetime.strptime(date_section['TODAY'], '%Y-%m-%d %H:%M:%S')
+        # current_date = datetime.datetime.strptime(datetime.now(), '%Y-%m-%d %H:%M:%S')
         days_remaining = (expiry_date - current_date).days
         return days_remaining, expiry_date
     else:
@@ -169,7 +147,7 @@ def check_domain_expiry(sheet, domain_name):
 @handle_google_sheets_exceptions
 def update_index_sheet(last_run, domain, remaining_days, status):
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name(info_dict, scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
     client = gspread.authorize(creds)
     sheet = client.open('Domain_Expiry_Master').worksheet('index')
     index_values = sheet.get_all_values()
@@ -203,9 +181,11 @@ def send_discord_notification(message):
 
     # Get the webhook URL and user ID from the config file
     WEBHOOK_URL = discord_section['webhook_url']
-    USER_ID = discord_section['user_id']
-
-    message_content = f'Hello <@{USER_ID}>!  {message}.'
+    USER_ID_LAKSHMI = discord_section['user_id_lakshmi']
+    USER_ID_JAYAPRIYA = discord_section['user_id_jayapriya']
+    USER_ID_DEEPA = discord_section['user_id_deepa']
+    USER_ID_POOMAGAL = discord_section['user_id_poomagal']
+    message_content = f'Hello <@{USER_ID_LAKSHMI}> and <@{USER_ID_JAYAPRIYA}>! {message}.'
     # message_content = f'Hello <@{USER_ID}>! This is a tagged message.'
     payload = {'content':  message_content}
     headers = {'Content-Type': 'application/json'}
@@ -294,18 +274,26 @@ def main():
 
                     elif remaining_days < 10:
                         remaining_days, expiry_date = check_api(domain)
-                        if remaining_days <= 10:
+                        if 0 < remaining_days <= 10:
                             domains_expiring_in_a_day.append(f"{domain} is expiring in  {remaining_days} days")
                             message2 = "The following domains are expiring within 10 day:\n\n"
                             message2 += '\n'.join(domains_expiring_in_a_day)
-                            message3 = f"{domain} in expiring in {remaining_days} days"
+                            message3 = f"{domain} is expiring in {remaining_days} days"
                             send_discord_notification(message3)
                             send_email(message3)
                             if mail_ID:
                                 client_email(message3, mail_ID)
                         else:
                             domain_cells = sheet.findall(domain)
-                            sheet.update_cell(domain_cells[0].row, 3, expiry_date)
+                            formatted_expiry_date = expiry_date.strftime("%Y-%m-%d %H:%M:%S")
+                            print(formatted_expiry_date)
+                            sheet.update_cell(domain_cells[0].row, 3, formatted_expiry_date)
+                        if remaining_days <= 0:
+                            message4 = f"{domain} is expired on {expiry_date}."
+                            send_discord_notification(message4)
+                            send_email(message4)
+                            if mail_ID:
+                                client_email(message4, mail_ID)
 
                     else:
                         domains_expiring_lately.append(f"{domain} is expiring in  {remaining_days} days")
